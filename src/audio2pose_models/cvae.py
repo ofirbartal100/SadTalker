@@ -122,7 +122,7 @@ class DECODER(nn.Module):
 
     def forward(self, batch):
 
-        z = batch['z']                                          #bs latent_size
+        z = batch['z'] * 0                                         #bs latent_size
         bs = z.shape[0]
         class_id = batch['class']
         ref = batch['ref']                             #bs 6

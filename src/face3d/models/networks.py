@@ -16,12 +16,37 @@ except ImportError:
     from torch.utils.model_zoo import load_url as load_state_dict_from_url
 from typing import Type, Any, Callable, Union, List, Optional
 from .arcface_torch.backbones import get_model
-from kornia.geometry import warp_affine
+import torch.nn.functional as F
 
-def resize_n_crop(image, M, dsize=112):
-    # image: (b, c, h, w)
-    # M   :  (b, 2, 3)
-    return warp_affine(image, M, dsize=(dsize, dsize), align_corners=True)
+# from kornia.geometry import warp_affine
+
+# def resize_n_crop(image, M, dsize=112):
+#     # image: (b, c, h, w)
+#     # M   :  (b, 2, 3)
+#     return warp_affine(image, M, dsize=(dsize, dsize), align_corners=True)
+
+def resize_n_crop(image: torch.Tensor, M: torch.Tensor, dsize: int = 112) -> torch.Tensor:
+    """
+    Resize and crop an image using grid_sample for affine transformation.
+    
+    Args:
+        image (torch.Tensor): Input image tensor of shape (B, C, H, W)
+        M (torch.Tensor): Affine transformation matrix of shape (B, 2, 3)
+        dsize (int, optional): Output image size. Defaults to 112.
+    
+    Returns:
+        torch.Tensor: Transformed image tensor of shape (B, C, dsize, dsize)
+    """
+    # Create grid for affine sampling
+    B, C, H, W = image.shape
+    theta = torch.zeros(B, 2, 3, device=image.device)
+    theta[:, :, :2] = M
+    
+    # Create normalized grid
+    grid = F.affine_grid(theta, [B, C, dsize, dsize], align_corners=True)
+    
+    # Sample image using grid
+    return F.grid_sample(image, grid, mode='bilinear', padding_mode='zeros', align_corners=True)
 
 def filter_state_dict(state_dict, remove_name='fc'):
     new_state_dict = {}
